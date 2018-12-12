@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+</head>
+<body>
+<div id="app">
+    <el-button type="primary" @click="dialogVisible = true">添加用户</el-button>
+    <el-table
+            :data="list"
+            style="width: 80%"
+            @selection-change="handleSelectionChange"
+            align="center"
+            @sort-change="sortchange">
+        <el-table-column
+                type="selection"
+                width="55">
+        </el-table-column>
+        <el-table-column
+                prop="empno"
+                label="员工号"
+                sortable
+                width="250">
+        </el-table-column>
+        <el-table-column
+                prop="ename"
+                label="姓名"
+                width="180">
+        </el-table-column>
+        <el-table-column
+                prop="job"
+                label="职位">
+        </el-table-column>
+        <el-table-column
+                prop="mgr"
+                label="经理"
+                sortable>
+        </el-table-column>
+        <el-table-column
+                prop="hiredate"
+                label="入职日期"
+                :sortable="sort"
+        >
+        </el-table-column>
+        <el-table-column
+                prop="sal"
+                label="工资">
+        </el-table-column>
+        <el-table-column
+                prop="comm"
+                label="奖金">
+        </el-table-column>
+        <el-table-column
+                prop="deptno"
+                label="部门号">
+        </el-table-column>
+    </el-table>
+    <el-pagination
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="currentpage"
+            :page-sizes="[5,8,10,15]"
+            :page-size="pagesize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total">
+    </el-pagination>
+    <!-------------------------------------添加界面的模态框------------------------------>
+    <el-dialog
+            title="添加界面"
+            :visible.sync="dialogVisible"
+            width="30%"
+            :before-close="handleClose">
+
+        <el-form ref="form" :model="form" label-width="80px">
+            <el-form-item label="员工编号">
+                <el-input v-model="form.empno"></el-input>
+            </el-form-item>
+            <el-form-item label="员工姓名">
+                <el-input v-model="form.ename"></el-input>
+            </el-form-item>
+            <el-form-item label="入职时间">
+                <el-col :span="11">
+                    <el-date-picker
+                            v-model="form.hiredate"
+                            type="datetime"
+                            value-format="yyyy-MM-dd hh:mm:ss"
+                            placeholder="选择日期时间"
+                            align="right"
+                            :picker-options="pickerOptions1">
+                    </el-date-picker>
+                </el-col>
+            </el-form-item>
+            <el-form-item label="部门号">
+                <el-input v-model="form.deptno"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+            <el-button @click="dialogVisible = false">取 消</el-button>
+            <el-button type="primary" @click="addOne">确 定</el-button>
+        </span>
+    </el-dialog>
+</div>
+<script type="text/javascript">
+    var app = new Vue({
+        el: "#app",
+        data: {
+            list: [],
+            form: {
+                empno: '',
+                ename: '',
+                hiredate: '',
+                deptno: ''
+            },
+            dialogVisible: false,
+            sort: '',
+            prop: '',
+            //当前页
+            currentpage: 1,
+            //一页显示多少条
+            pagesize: 5,
+            //总计多少条数据
+            total: 0,
+            pickerOptions1: {
+                shortcuts: [{
+                    text: '今天',
+                    onClick(picker) {
+                        picker.$emit('pick', new Date());
+                    }
+                }, {
+                    text: '昨天',
+                    onClick(picker) {
+                        const date = new Date();
+                        date.setTime(date.getTime() - 3600 * 1000 * 24);
+                        picker.$emit('pick', date);
+                    }
+                }, {
+                    text: '一周前',
+                    onClick(picker) {
+                        const date = new Date();
+                        date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
+                        picker.$emit('pick', date);
+                    }
+                }]
+            },
+        },
+        methods: {
+            /*-----------------------------重新加载数据--------------------------*/
+            reloadData() {
+                var url = "/roomInfo/getAllrecord";
+                var start = (this.currentpage - 1) * this.pagesize;
+                var end = this.pagesize;
+                //封装分页查询条件
+                var query = {"start": start, "end": end, "prop": app.prop, "sort": app.sort};
+                axios.post(url, query)
+                    .then(function (response) {
+                        app.list = response.data.rowList;
+                        app.total = response.data.totalRow;
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            /*-----------------------------添加一条记录--------------------------*/
+            addOne() {
+                var formparam = app.form;
+                var url = "/roomInfo/add";
+                var param = {
+                    "empno": formparam.empno,
+                    "ename": formparam.ename,
+                    "hiredate": formparam.hiredate,
+                    "deptno": formparam.deptno
+                };
+                axios.post(url, param).then(function (response) {
+                    app.dialogVisible = false;
+                    app.reloadData();
+                    app.open3(response.data.message);
+                })
+            },
+            sortchange(column) {
+                app.prop = column.prop;
+                app.sort = column.order;
+                app.reloadData();
+            },
+
+            /*-----------------------------分页----------------------------------------*/
+            handleSizeChange(val) {
+                app.pagesize = val;
+                app.reloadData();
+            },
+            handleCurrentChange(val) {
+                app.currentpage = val;
+                app.reloadData();
+            },
+            /*-----------------------------关闭模态框的消息提示--------------------------*/
+            handleClose(done) {
+                this.$confirm('确认关闭？')
+                    .then(_ => {
+                        done();
+                    })
+                    .catch(_ => {
+                    });
+            },
+            handleSelectionChange(val) {
+                this.multipleSelection = val;
+            },
+            /*-----------------------------消息提示 open3:成功提示,open4:错误提示-------------------*/
+            open3(msg) {
+                this.$message({
+                    title: '消息',
+                    message: msg,
+                });
+            },
+        },
+        created: function () {
+            var url = "/roomInfo/getAllrecord";
+            var start = (this.currentpage - 1) * this.pagesize;
+            var end = this.pagesize;
+            //封装分页查询条件
+            var query = {"start": start, "end": end};
+            axios.post(url, query)
+                .then(function (response) {
+                    app.list = response.data.rowList;
+                    app.total = response.data.totalRow;
+                })
+                .catch(function (error) {
+                    console.log(error);
+                })
+        }
+    })
+</script>
+</body>
+</html>
